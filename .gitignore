@@ -1,0 +1,6 @@
+# Python gitignore
+__pycache__/
+.vscode/
+
+FingerprintColorImageDatabase*
+data/
