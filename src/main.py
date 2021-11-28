@@ -1,20 +1,39 @@
 import tensorflow as tf
+from MathworksLoader import MathworksLoader
+from model import FingNet
 
-def train(model, optimizer, train_a, train_p, train_n, batch_size):
-    n_inputs = train_a.shape[0]
-    n_batches = -(-n_inputs // model.batch_size)
-    for i in range(n_batches):
-        start = i*model.batch_size
-        end = (i+1)*model.batch_size
-        batch_a = train_a[start:end]
-        batch_p = train_p[start:end]
-        batch_n = train_n[start:end]
+N_BATCHES = 20
+N_IDENTITIES = 3
+N_ANCHOR_PER_IDENTITY = 3
+N_POS_PER_ANCHOR = 2
 
-        with tf.GradientTape() as tape:
-            embed_a = model(batch_a)
-            embed_p = model(batch_p)
-            embed_n = model(batch_n)
-            loss = model.loss_function(embed_a, embed_p, embed_n)
-        gradients = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    
+IMAGE_HEIGHT = 200
+IMAGE_WIDTH = 200
+
+ALPHA = 1
+LAMBDA = 0
+D_LATENT = 300
+
+LEARNING_RATE = 0.1
+
+loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
+loader.load_fingerprints('./data', 0.6)
+
+model = FingNet(ALPHA, LAMBDA, D_LATENT)
+optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
+
+for i in range(N_BATCHES):
+    x_a, x_p, x_n = loader.create_batch(
+        N_IDENTITIES, N_ANCHOR_PER_IDENTITY, N_POS_PER_ANCHOR, True)
+
+    with tf.GradientTape() as tape:
+        z_a = model(x_a)
+        print(z_a)
+        z_p = model(x_p)
+        z_n = model(x_n)
+        z_a = loader.repeat_latent_for_triplets(z_a, N_POS_PER_ANCHOR, D_LATENT)
+        z_n = loader.repeat_latent_for_triplets(z_n, N_POS_PER_ANCHOR, D_LATENT)
+        loss = model.loss_function(z_a, z_p, z_n)
+        print(loss)
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))

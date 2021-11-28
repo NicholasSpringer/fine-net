@@ -1,4 +1,7 @@
-from typing import Literal
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 import tensor_annotations.tensorflow as ttf
 import tensorflow as tf
 
