@@ -86,6 +86,13 @@ class AbstractLoader(ABC):
         """
         pass
 
+    @abstractmethod
+    def create_batch(self, Nc: int, Np: int, k: int, is_training: bool) -> ttf.Tensor2:
+        """
+        Creates a batch of triplets.
+        """
+        pass
+
 
 class PlaceholderModel(tf.keras.Model):
     def call(input):

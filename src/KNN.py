@@ -7,7 +7,7 @@ from AbstractLoader import ArbitraryNumPrints, Height, Width
 
 def KNN(
     data: ttf.Tensor3[ArbitraryNumPrints, Height, Width],
-    anchor: ttf.Tensor3[1, Height, Width],
+    anchor: ttf.Tensor3[Literal[1], Height, Width],
     model: tf.keras.Model,
     k: int,
 ) -> ttf.Tensor3[ArbitraryNumPrints, Height, Width]:

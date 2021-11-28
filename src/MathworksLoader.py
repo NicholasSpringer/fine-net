@@ -116,7 +116,10 @@ class MathworksLoader(AbstractLoader):
                 f"Provided anchor cardinality argument, {num_anchors}, exceeds number examples, {len(data_for_identity)} for current identity={identity}"
             )
 
-        triplets = np.empty((num_anchors, k + 1, self.image_height, self.image_width))
+        positive_examples = np.empty(
+            (num_anchors, k, self.image_height, self.image_width)
+        )
+        negative_examples = np.empty((num_anchors, self.image_height, self.image_width))
         # TODO: Randomly choose the anchors. For now, just take the first Np.
         anchors = data_for_identity[:num_anchors]
 
@@ -127,17 +130,53 @@ class MathworksLoader(AbstractLoader):
             anchor = tf.expand_dims(anchor, axis=0)
 
             # Expected shape: [k, image_height, image_width]
-            positive_examples = KNN(data_for_identity, anchor, model, k=k)
+
+            # TODO: for the below call, we need to splice of the anchor from the data_for_identity.
+            curr_anchor_positive_examples = KNN(data_for_identity, anchor, model, k=k)
             # Expected shape: [1, image_height, image_width]
-            negative_example = KNN(flattened_data_without_identity, anchor, model, k=1)
+            curr_anchor_negative_example = KNN(
+                flattened_data_without_identity, anchor, model, k=1
+            )
 
             # Concatenate the positive and negative examples together.
-            concatenated_examples = tf.concat(
-                [positive_examples, negative_example], axis=0
-            )
-            triplets[idx] = concatenated_examples
+            positive_examples[idx] = curr_anchor_positive_examples
+            negative_examples[idx] = curr_anchor_negative_example
 
-        return triplets
+        assert (
+            anchors.shape[0] == positive_examples.shape[0] == negative_examples.shape[0]
+        )
+        return (
+            anchors,
+            tf.convert_to_tensor(positive_examples),
+            tf.convert_to_tensor(negative_examples),
+        )
+
+        # return triplets
+
+    def create_batch(
+        self, num_indentities: int, num_anchors: int, k: int, is_training: bool
+    ) -> ttf.Tensor2:
+        """
+        Creates a batch of triplets.
+        """
+        data = self.train_fingerprints if is_training else self.test_fingerprints
+
+        # Create a numpy array of length Nc with random values within range of data
+        indices = np.random.randint(0, len(data), size=num_indentities)
+
+        batch = np.empty(
+            (num_indentities, num_anchors, k + 1, self.image_height, self.image_width)
+        )
+        for i, identity_index in enumerate(indices):
+            # Create a batch of triplets for the current identity
+            triplets = self.create_triplets_for_identity(
+                identity_index, num_anchors, k, is_training
+            )  # Tensor4[Np, k+1, self.image_height, self.image_width]
+
+            print(triplets.shape)
+            batch[i] = triplets
+
+        return batch
 
 
 if __name__ == "__main__":
