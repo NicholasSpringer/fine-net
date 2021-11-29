@@ -15,7 +15,7 @@ from AbstractLoader import (
     UniqueIdentities,
     Width,
 )
-from KNN import KNN
+from knn import knn_negative, knn_positive
 
 
 class MathworksLoader(AbstractLoader):
@@ -85,57 +85,40 @@ class MathworksLoader(AbstractLoader):
             all_fingerprints_tensor, [num_train, num_test], axis=1
         )
 
-    def split_positive_negative(self, identity, data):
-        all_pos: ttf.Tensor3[
-            TrainOrTestPrintsPerIdentity, Height, Width
-        ] = data[identity]
-
-        negative_mask = 1 - tf.one_hot(identity, len(data))
-        all_neg = tf.boolean_mask(data, negative_mask, axis=0)
-        # Flatten negative examples
-        all_neg = tf.reshape(
-            all_neg, (-1, self.image_height, self.image_width))
-
-        return all_pos, all_neg
-
     def create_triplets_for_identity(
         self,
-        identity: int,
-        num_anchors: int,
-        k: int,
+        identity_idx: int,
+        n_anchors: int,
+        n_pos_per_anchor: int,
         is_training: bool,
         model: tf.keras.Model = PlaceholderModel,
-    ) -> ttf.Tensor4:  # Tensor4[num_anchors, k+1, self.image_height, self.image_width]
-        data = self.train_fingerprints if is_training else self.test_fingerprints
-        all_pos, all_neg = self.split_positive_negative(identity, data)
+    ) -> ttf.Tensor4:  # Tensor4[n_anchors, k+1, self.image_height, self.image_width]
+        identities_x = self.train_fingerprints if is_training else self.test_fingerprints
 
-        if all_pos.shape[0] < num_anchors:
+        if identities_x.shape[1] < n_anchors:
             raise Exception(
-                f"Provided anchor cardinality argument, {num_anchors}, exceeds number examples, {len(all_pos)} for current identity={identity}"
+                f"Provided anchor cardinality argument, {n_anchors}, " +
+                f"exceeds number examples, {identities_x.shape[1]} " +
+                f"for current identity_idx={identity_idx}"
             )
 
         # Sample anchors from positives
         triplet_anchor_indices = np.random.permutation(
-            np.arange(all_pos.shape[0]))[:num_anchors]
-        triplet_anchors = tf.gather(all_pos, triplet_anchor_indices)
+            np.arange(identities_x.shape[1]))[:n_anchors]
+        triplet_anchors = tf.gather(
+            identities_x[identity_idx], triplet_anchor_indices)
         triplet_anchors = np.reshape(
-            triplet_anchors, [-1, 1, self.image_height, self.image_width])
+            triplet_anchors, [-1, 1, self.image_height, self.image_width, 1])
 
         triplet_pos = np.empty(
-            (num_anchors, k, self.image_height, self.image_width)
-        )
+            (n_anchors, n_pos_per_anchor, self.image_height, self.image_width, 1))
         triplet_neg = np.empty(
-            (num_anchors, 1, self.image_height, self.image_width))
+            (n_anchors, 1, self.image_height, self.image_width, 1))
         for i, anchor_idx in enumerate(triplet_anchor_indices):
-            # Remove anchor from positive candidates
-            triplet_pos_candidates = tf.concat(
-                [all_pos[:anchor_idx], all_pos[anchor_idx+1:]], 0)
-
-            triplet_pos[i] = KNN(
-                triplet_pos_candidates, triplet_anchors[i], model, k=k)
-            triplet_neg[i] = KNN(
-                all_neg, triplet_anchors[i], model, k=1
-            )
+            triplet_pos[i] = knn_positive(
+                identity_idx, anchor_idx, identities_x, n_pos_per_anchor, model)
+            triplet_neg[i] = knn_negative(
+                identity_idx, anchor_idx, identities_x, 1, model)
 
         assert (
             triplet_anchors.shape[0] == triplet_pos.shape[0] == triplet_neg.shape[0]
@@ -150,28 +133,28 @@ class MathworksLoader(AbstractLoader):
         """
         Creates a batch of triplets.
         """
-        data = self.train_fingerprints if is_training else self.test_fingerprints
+        identities_x = self.train_fingerprints if is_training else self.test_fingerprints
 
         # Sample identities
-        anchor_identities = np.random.permutation(
-            np.arange(data.shape[0]))[:n_identities]
+        anchor_identity_indices = np.random.permutation(
+            np.arange(identities_x.shape[0]))[:n_identities]
 
         x_a = np.empty(
             (n_identities, n_anchor_per_ident, 1,
-             self.image_height, self.image_width)
+             self.image_height, self.image_width, 1)
         )
         x_p = np.empty(
             (n_identities, n_anchor_per_ident, n_pos_per_anchor,
-             self.image_height, self.image_width)
+             self.image_height, self.image_width, 1)
         )
         x_n = np.empty(
             (n_identities, n_anchor_per_ident, 1,
-             self.image_height, self.image_width)
+             self.image_height, self.image_width, 1)
         )
 
-        for i, identity_index in enumerate(anchor_identities):
+        for i, identity_idx in enumerate(anchor_identity_indices):
             anchors, positives, negatives = self.create_triplets_for_identity(
-                identity_index, n_anchor_per_ident, n_pos_per_anchor, is_training, model
+                identity_idx, n_anchor_per_ident, n_pos_per_anchor, is_training, model
             )
 
             x_a[i] = anchors
@@ -189,7 +172,7 @@ class MathworksLoader(AbstractLoader):
         z = tf.repeat(z, n_pos_per_anchor, axis=1)
         z = tf.reshape(z, [-1, d_latent])
         return z
-        
+
 
 if __name__ == "__main__":
     # Load the fingerprints
