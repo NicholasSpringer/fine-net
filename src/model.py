@@ -8,6 +8,7 @@ class FingNet(tf.keras.Model):
 
         self.embedder = tf.keras.Sequential([
             tf.keras.layers.Conv2D(16, 7, 2, 'same'), # 100
+            tf.keras.layers.BatchNormalization(),
             tf.keras.layers.MaxPool2D((2,2), 2, padding='same'), # 50
             ResidualBlock([32, 32, 64], [1, 3, 1], 2),
             tf.keras.layers.MaxPool2D((2,2), 2, padding='same'), # 25
@@ -18,13 +19,12 @@ class FingNet(tf.keras.Model):
             ResidualBlock([256, 256, 512] , [1, 3, 1], 3),
             tf.keras.layers.AvgPool2D((7,7), 7), # 1
             tf.keras.layers.Reshape((512,)),
-            tf.keras.layers.Dense(d_latent, activation='softmax')
+            tf.keras.layers.Dense(d_latent),
         ])
-        self.embedder.build((1000, 200, 200, 1))
-        self.embedder.summary()
 
     def call(self, x):
-        return self.embedder(x)
+        z = self.embedder(x)
+        return tf.math.l2_normalize(z, axis = 1)
 
     def triplet_loss(self, z_a, z_p, z_n):
         batch_sz = z_a.shape[0]
@@ -38,7 +38,7 @@ class FingNet(tf.keras.Model):
         return l
     
     def loss_function(self, z_a, z_p, z_n):
-        l = self.triplet_loss(z_a, z_p, z_n) + self.lmbda * self.softmax_loss(z_a, z_p, z_n)
+        l = self.triplet_loss(z_a, z_p, z_n) #+ self.lmbda * self.softmax_loss(z_a, z_p, z_n)
         return tf.reduce_sum(l)
 
 
