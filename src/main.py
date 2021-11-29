@@ -36,3 +36,5 @@ for i in range(N_BATCHES):
         print(loss.numpy())
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+tf.keras.models.save_model(model, './models/fing')

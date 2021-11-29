@@ -39,6 +39,7 @@ class FingNet(tf.keras.Model):
         prints_z = self.call(prints_x)
         identities_z = tf.reshape(
             prints_z, [n_identities, n_prints_per_identity, self.d_latent])
+        return identities_z
 
     def triplet_loss(self, z_a, z_p, z_n):
         batch_sz = z_a.shape[0]
