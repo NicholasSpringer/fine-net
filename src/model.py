@@ -43,8 +43,8 @@ class FingNet(tf.keras.Model):
 
     def triplet_loss(self, z_a, z_p, z_n):
         batch_sz = z_a.shape[0]
-        positive_dist = tf.norm(z_a - z_p)
-        negative_dist = tf.norm(z_a - z_n)
+        positive_dist = tf.norm(z_a - z_p, axis=1)
+        negative_dist = tf.norm(z_a - z_n, axis=1)
         J = positive_dist - negative_dist + self.alpha
         return tf.math.maximum(J, tf.zeros([batch_sz]))
 
