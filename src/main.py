@@ -1,9 +1,10 @@
 import tensorflow as tf
 from MathworksLoader import MathworksLoader
+from eval import stats
 from model import FingNet
 
-N_BATCHES = 20
-N_IDENTITIES = 10
+N_BATCHES = 10
+N_IDENTITIES = 50
 N_ANCHOR_PER_IDENTITY = 3
 N_POS_PER_ANCHOR = 2
 
@@ -21,11 +22,10 @@ loader.load_fingerprints('./data', 0.6)
 
 model = FingNet(ALPHA, LAMBDA, D_LATENT)
 optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
-
+print(stats(model, loader))
 for i in range(N_BATCHES):
     x_a, x_p, x_n = loader.create_batch(
         N_IDENTITIES, N_ANCHOR_PER_IDENTITY, N_POS_PER_ANCHOR, True)
-
     with tf.GradientTape() as tape:
         z_a = model(x_a)
         z_p = model(x_p)
@@ -34,6 +34,7 @@ for i in range(N_BATCHES):
         z_n = loader.repeat_latent_for_triplets(z_n, N_POS_PER_ANCHOR, D_LATENT)
         loss = model.loss_function(z_a, z_p, z_n)
         print(loss.numpy())
+    print(stats(model, loader))
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
