@@ -55,8 +55,8 @@ class FingNet(tf.keras.Model):
         return l
 
     def loss_function(self, z_a, z_p, z_n):
-        l = self.triplet_loss(z_a, z_p, z_n) + self.lmbda * \
-            self.softmax_loss(z_a, z_p)
+        l = self.triplet_loss(z_a, z_p, z_n) #+ self.lmbda * \
+            #self.softmax_loss(z_a, z_p)
         return tf.reduce_sum(l)
 
 
