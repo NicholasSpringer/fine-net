@@ -2,9 +2,10 @@ import tensorflow as tf
 from MathworksLoader import MathworksLoader
 from eval import stats
 from model import FingNet
+from triplets import create_triplets_batch
 
-N_BATCHES = 10
-N_IDENTITIES = 10
+N_BATCHES = 50
+N_IDENTITIES = 
 N_ANCHOR_PER_IDENTITY = 3
 N_POS_PER_ANCHOR = 2
 
@@ -12,29 +13,27 @@ IMAGE_HEIGHT = 200
 IMAGE_WIDTH = 200
 
 ALPHA = 1
-LAMBDA = 0
+LAMBDA = 1
 D_LATENT = 300
 
-LEARNING_RATE = 1e-3
+LEARNING_RATE = .1
 
 loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
 loader.load_fingerprints('./data', 0.6)
+identities_x_train = loader.train_fingerprints
 
 model = FingNet(ALPHA, LAMBDA, D_LATENT)
 optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 for i in range(N_BATCHES):
-    x_a, x_p, x_n = loader.create_batch(
-        N_IDENTITIES, N_ANCHOR_PER_IDENTITY, N_POS_PER_ANCHOR, True)
     with tf.GradientTape() as tape:
-        z_a = model(x_a, training=True)
-        z_p = model(x_p, training=True)
-        z_n = model(x_n, training=True)
-        z_a = loader.repeat_latent_for_triplets(z_a, N_POS_PER_ANCHOR, D_LATENT)
-        z_n = loader.repeat_latent_for_triplets(z_n, N_POS_PER_ANCHOR, D_LATENT)
+        identities_z_train = model.call_on_identities(
+            identities_x_train, training=True)
+        z_a, z_p, z_n = create_triplets_batch(
+            identities_z_train, N_IDENTITIES, N_ANCHOR_PER_IDENTITY, N_POS_PER_ANCHOR)
         loss = model.loss_function(z_a, z_p, z_n)
         print(loss.numpy())
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-stats(model, loader)
+stats(model, loader.train_fingerprints)
 
-tf.keras.models.save_model(model, './models/fing')
+#tf.keras.models.save_model(model, './models/fing')

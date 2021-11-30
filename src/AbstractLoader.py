@@ -58,40 +58,40 @@ class AbstractLoader(ABC):
         """
         pass
 
-    @abstractmethod
-    def create_triplets_for_identity(
-        self,
-        identity: int,
-        Np: int,
-        k: int,
-        is_training: bool,
-        model: tf.keras.Model,
-    ) -> ttf.Tensor2:
-        """
-        Creates a tensor that contains all the triplets for the given identity.
-        Note that below, A = Np.
+    # @abstractmethod
+    # def create_triplets_for_identity(
+    #     self,
+    #     identity: int,
+    #     Np: int,
+    #     k: int,
+    #     is_training: bool,
+    #     model: tf.keras.Model,
+    # ) -> ttf.Tensor2:
+    #     """
+    #     Creates a tensor that contains all the triplets for the given identity.
+    #     Note that below, A = Np.
 
-        Implementations of this function must:
-            1. Choose A anchors for the given identity
-            2. For each anchor, choose the k nearest fingerprints of the same identity
-            3. For each anchor, find the closest negative fingerprint of a different identity
-            4. Create triplets from the <anchors.positives> concatted with the <negative> anchor
-            5. The result should be a tensor of shape: [A, k+1]. The "+1" is for the negative fingerprint
+    #     Implementations of this function must:
+    #         1. Choose A anchors for the given identity
+    #         2. For each anchor, choose the k nearest fingerprints of the same identity
+    #         3. For each anchor, find the closest negative fingerprint of a different identity
+    #         4. Create triplets from the <anchors.positives> concatted with the <negative> anchor
+    #         5. The result should be a tensor of shape: [A, k+1]. The "+1" is for the negative fingerprint
 
-        The model is passed in so that we can compute the latent space for each fingerprint, when
-        doing KNN.
+    #     The model is passed in so that we can compute the latent space for each fingerprint, when
+    #     doing KNN.
 
-        If is_training is true, self.train_fingerprints should be used. Otherwise, use the testing
-        fingerprints, self.test_fingerprints.
-        """
-        pass
+    #     If is_training is true, self.train_fingerprints should be used. Otherwise, use the testing
+    #     fingerprints, self.test_fingerprints.
+    #     """
+    #     pass
 
-    @abstractmethod
-    def create_batch(self, Nc: int, Np: int, k: int, is_training: bool) -> ttf.Tensor2:
-        """
-        Creates a batch of triplets.
-        """
-        pass
+    # @abstractmethod
+    # def create_batch(self, Nc: int, Np: int, k: int, is_training: bool) -> ttf.Tensor2:
+    #     """
+    #     Creates a batch of triplets.
+    #     """
+    #     pass
 
 
 class PlaceholderModel(tf.keras.Model):

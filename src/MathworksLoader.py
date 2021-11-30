@@ -1,5 +1,4 @@
 import os
-
 import numpy as np
 import tensor_annotations.tensorflow as ttf
 import tensorflow as tf
@@ -16,7 +15,6 @@ from AbstractLoader import (
     Width,
 )
 from knn import knn_negative, knn_positive
-
 
 class MathworksLoader(AbstractLoader):
     def __init__(self, image_height: int, image_width: int) -> None:
@@ -84,94 +82,6 @@ class MathworksLoader(AbstractLoader):
         self.train_fingerprints, self.test_fingerprints = tf.split(
             all_fingerprints_tensor, [num_train, num_test], axis=1
         )
-
-    def create_triplets_for_identity(
-        self,
-        identity_idx: int,
-        n_anchors: int,
-        n_pos_per_anchor: int,
-        is_training: bool,
-        model: tf.keras.Model = PlaceholderModel,
-    ) -> ttf.Tensor4:  # Tensor4[n_anchors, k+1, self.image_height, self.image_width]
-        identities_x = self.train_fingerprints if is_training else self.test_fingerprints
-
-        if identities_x.shape[1] < n_anchors:
-            raise Exception(
-                f"Provided anchor cardinality argument, {n_anchors}, " +
-                f"exceeds number examples, {identities_x.shape[1]} " +
-                f"for current identity_idx={identity_idx}"
-            )
-
-        # Sample anchors from positives
-        triplet_anchor_indices = np.random.permutation(
-            np.arange(identities_x.shape[1]))[:n_anchors]
-        triplet_anchors = tf.gather(
-            identities_x[identity_idx], triplet_anchor_indices)
-        triplet_anchors = np.reshape(
-            triplet_anchors, [-1, 1, self.image_height, self.image_width, 1])
-
-        triplet_pos = np.empty(
-            (n_anchors, n_pos_per_anchor, self.image_height, self.image_width, 1))
-        triplet_neg = np.empty(
-            (n_anchors, 1, self.image_height, self.image_width, 1))
-        for i, anchor_idx in enumerate(triplet_anchor_indices):
-            triplet_pos[i] = knn_positive(
-                identity_idx, anchor_idx, identities_x, n_pos_per_anchor, model)
-            triplet_neg[i] = knn_negative(
-                identity_idx, anchor_idx, identities_x, 1, model)
-
-        assert (
-            triplet_anchors.shape[0] == triplet_pos.shape[0] == triplet_neg.shape[0]
-        )
-        triplet_pos = tf.convert_to_tensor(triplet_pos)
-        triplet_neg = tf.convert_to_tensor(triplet_neg)
-        return triplet_anchors, triplet_pos, triplet_neg
-
-    def create_batch(
-        self, n_identities: int, n_anchor_per_ident: int, n_pos_per_anchor: int, is_training: bool, model: tf.keras.Model = PlaceholderModel,
-    ) -> ttf.Tensor2:
-        """
-        Creates a batch of triplets.
-        """
-        identities_x = self.train_fingerprints if is_training else self.test_fingerprints
-
-        # Sample identities
-        anchor_identity_indices = np.random.permutation(
-            np.arange(identities_x.shape[0]))[:n_identities]
-
-        x_a = np.empty(
-            (n_identities, n_anchor_per_ident, 1,
-             self.image_height, self.image_width, 1)
-        )
-        x_p = np.empty(
-            (n_identities, n_anchor_per_ident, n_pos_per_anchor,
-             self.image_height, self.image_width, 1)
-        )
-        x_n = np.empty(
-            (n_identities, n_anchor_per_ident, 1,
-             self.image_height, self.image_width, 1)
-        )
-
-        for i, identity_idx in enumerate(anchor_identity_indices):
-            anchors, positives, negatives = self.create_triplets_for_identity(
-                identity_idx, n_anchor_per_ident, n_pos_per_anchor, is_training, model
-            )
-
-            x_a[i] = anchors
-            x_p[i] = positives
-            x_n[i] = negatives
-
-        x_a = tf.reshape(x_a, [-1, self.image_height, self.image_width, 1])
-        x_p = tf.reshape(x_p, [-1, self.image_height, self.image_width, 1])
-        x_n = tf.reshape(x_n, [-1, self.image_height, self.image_width, 1])
-        return x_a, x_p, x_n
-
-    def repeat_latent_for_triplets(self, z, n_pos_per_anchor, d_latent):
-        # Repeat anchor or negative latent outputs to make first dimension size n_triplets
-        z = tf.reshape(z, [-1, 1, d_latent])
-        z = tf.repeat(z, n_pos_per_anchor, axis=1)
-        z = tf.reshape(z, [-1, d_latent])
-        return z
 
 
 if __name__ == "__main__":
