@@ -31,12 +31,12 @@ class FingNet(tf.keras.Model):
         z = self.embedder(x, training=training)
         return tf.math.l2_normalize(z, axis=1)
 
-    def call_on_identities(self, identities_x):
+    def call_on_identities(self, identities_x, training=False):
         n_identities = identities_x.shape[0]
         n_prints_per_identity = identities_x.shape[1]
         prints_x = tf.reshape(
             identities_x, [-1, INPUT_HEIGHT, INPUT_WIDTH, 1])
-        prints_z = self.call(prints_x)
+        prints_z = self.call(prints_x, training=True)
         identities_z = tf.reshape(
             prints_z, [n_identities, n_prints_per_identity, self.d_latent])
         return identities_z

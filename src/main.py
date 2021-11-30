@@ -26,9 +26,9 @@ for i in range(N_BATCHES):
     x_a, x_p, x_n = loader.create_batch(
         N_IDENTITIES, N_ANCHOR_PER_IDENTITY, N_POS_PER_ANCHOR, True)
     with tf.GradientTape() as tape:
-        z_a = model(x_a)
-        z_p = model(x_p)
-        z_n = model(x_n)
+        z_a = model(x_a, training=True)
+        z_p = model(x_p, training=True)
+        z_n = model(x_n, training=True)
         z_a = loader.repeat_latent_for_triplets(z_a, N_POS_PER_ANCHOR, D_LATENT)
         z_n = loader.repeat_latent_for_triplets(z_n, N_POS_PER_ANCHOR, D_LATENT)
         loss = model.loss_function(z_a, z_p, z_n)
