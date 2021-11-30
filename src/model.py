@@ -27,8 +27,8 @@ class FingNet(tf.keras.Model):
             tf.keras.layers.Dense(d_latent),
         ])
 
-    def call(self, x):
-        z = self.embedder(x)
+    def call(self, x, training=False):
+        z = self.embedder(x, training=training)
         return tf.math.l2_normalize(z, axis=1)
 
     def call_on_identities(self, identities_x):
@@ -77,6 +77,6 @@ class ResidualBlock(tf.keras.Model):
             self.convolutions.add(b)
             self.convolutions.add(a)
 
-    def call(self, x):
-        out = self.convolutions(x)
+    def call(self, x, training=False):
+        out = self.convolutions(x, training=training)
         return tf.pad(x, [[0, 0], [0, 0], [0, 0], [0, out.shape[3] - x.shape[3]]]) + out
