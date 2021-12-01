@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from time import time
 from MathworksLoader import MathworksLoader
-from model import FingNet
+from model import FineNet
 from triplets import create_triplets_batch
 
 N_BATCHES = 1
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     loader.load_fingerprints("./data", 0.6)
     identities_x_train = loader.train_fingerprints
 
-    model = FingNet(ALPHA, LAMBDA, D_LATENT)
+    model = FineNet(ALPHA, LAMBDA, D_LATENT)
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     train(model, optimizer, identities_x_train)
     model.save_weights("./models/fing")

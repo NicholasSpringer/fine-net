@@ -4,9 +4,9 @@ INPUT_HEIGHT = 200
 INPUT_WIDTH = 200
 
 
-class FingNet(tf.keras.Model):
+class FineNet(tf.keras.Model):
     def __init__(self, alpha, lmbda, d_latent):
-        super(FingNet, self).__init__()
+        super(FineNet, self).__init__()
         self.alpha = alpha
         self.lmbda = lmbda
         self.d_latent = d_latent

@@ -7,7 +7,7 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 from matplotlib import pyplot as plt
 
-from model import FingNet
+from model import FineNet
 from knn import knn_negative, knn_positive
 
 
@@ -196,7 +196,7 @@ def test_random_tsne_visualization():
 if __name__ == "__main__":
     loader = MathworksLoader(200, 200)
     loader.load_fingerprints("./data", 0.6)
-    model = FingNet(0.3, 0, 300)
+    model = FineNet(0.3, 0, 300)
     model.load_weights("./models/fing")
     # stats(model, loader.train_fingerprints)
     # stats(model, loader.test_fingerprints)
