@@ -29,15 +29,80 @@ def stats(model, identities_x):
 
 # Adapted from: https://datascientyst.com/get-list-of-n-different-colors-names-python-pandas/
 def generate_n_hex_colors(n: int):
-    colors = [""] * n
-    for i in range(n):
-        colors[i] = "#%06x" % np.random.randint(0, 0xFFFFFF)
-    return colors
+    return """#000000
+#00FF00
+#0000FF
+#FF0000
+#01FFFE
+#FFA6FE
+#FFDB66
+#006401
+#010067
+#95003A
+#007DB5
+#FF00F6
+#FFEEE8
+#774D00
+#90FB92
+#0076FF
+#D5FF00
+#FF937E
+#6A826C
+#FF029D
+#FE8900
+#7A4782
+#7E2DD2
+#85A900
+#FF0056
+#A42400
+#00AE7E
+#683D3B
+#BDC6FF
+#263400
+#BDD393
+#00B917
+#9E008E
+#001544
+#C28C9F
+#FF74A3
+#01D0FF
+#004754
+#E56FFE
+#788231
+#0E4CA1
+#91D0CB
+#BE9970
+#968AE8
+#BB8800
+#43002C
+#DEFF74
+#00FFC6
+#FFE502
+#620E00
+#008F9C
+#98FF52
+#7544B1
+#B500FF
+#00FF78
+#FF6E41
+#005F39
+#6B6882
+#5FAD4E
+#A75740
+#A5FFD2
+#FFB167
+#009BFF
+#E85EBE
+""".split(
+        "\n"
+    )[
+        :n
+    ]
 
 
 def show_tsne_visualization(training_z: tf.Tensor, testing_z: tf.Tensor):
-    training_z = training_z[:10]
-    testing_z = testing_z[:10]
+    training_z = training_z[:25]
+    testing_z = testing_z[:25]
 
     tsne = TSNE(n_components=2, random_state=0)
 
@@ -58,7 +123,7 @@ def show_tsne_visualization(training_z: tf.Tensor, testing_z: tf.Tensor):
     flat_z = np.reshape(all_z, [-1, all_z.shape[-1]])
 
     # Before TSNE, do some PCA to reduce the dimensionality
-    pca = PCA(n_components=5)
+    pca = PCA(n_components=10)
     # Shape: (250, 100)
     reduced_z = pca.fit_transform(flat_z)
 
@@ -133,8 +198,8 @@ if __name__ == "__main__":
     loader.load_fingerprints("./data", 0.6)
     model = FingNet(0.3, 0, 300)
     model.load_weights("./models/fing")
-    stats(model, loader.train_fingerprints)
-    stats(model, loader.test_fingerprints)
+    # stats(model, loader.train_fingerprints)
+    # stats(model, loader.test_fingerprints)
     show_tsne_visualization(
         model.call_on_identities(loader.train_fingerprints, training=True),
         model.call_on_identities(loader.test_fingerprints, training=True),
