@@ -46,19 +46,20 @@ def sample_prints(identities_x, n_identities, n_prints_per_identity):
 def train(model, optimizer, identities_x_train):
     for i in range(N_BATCHES):
         sample_identities_x = sample_prints(
-            identities_x_train, N_IDENTITIES, N_ANCHOR_PER_IDENTITY)
+            identities_x_train, N_IDENTITIES, N_ANCHOR_PER_IDENTITY
+        )
         with tf.GradientTape() as tape:
             sample_identities_z = model.call_on_identities(
-                sample_identities_x, training=True)
-            z_a, z_p, z_n = create_triplets_batch(
-                sample_identities_z, N_POS_PER_ANCHOR)
+                sample_identities_x, training=True
+            )
+            z_a, z_p, z_n = create_triplets_batch(sample_identities_z, N_POS_PER_ANCHOR)
             loss = model.loss_function(z_a, z_p, z_n)
-            print(f'Batch: {i}, Loss: {loss.numpy()}')
+            print(f"Batch: {i}, Loss: {loss.numpy()}")
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
     loader.load_fingerprints("./data", 0.6)
     identities_x_train = loader.train_fingerprints
@@ -66,4 +67,4 @@ if __name__ == '__main__':
     model = FingNet(ALPHA, LAMBDA, D_LATENT)
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     train(model, optimizer, identities_x_train)
-    model.save_weights('./models/fing')
+    model.save_weights("./models/fing")
