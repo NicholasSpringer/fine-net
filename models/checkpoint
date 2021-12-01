@@ -1,0 +1,2 @@
+model_checkpoint_path: "fing"
+all_model_checkpoint_paths: "fing"
