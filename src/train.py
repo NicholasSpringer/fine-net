@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 from time import time
 from MathworksLoader import MathworksLoader
-from eval import stats, show_tsne_visualization
 from model import FingNet
 from triplets import create_triplets_batch
 
@@ -44,32 +43,27 @@ def sample_prints(identities_x, n_identities, n_prints_per_identity):
     return sample_identities_x
 
 
-loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
-loader.load_fingerprints("./data", 0.6)
-identities_x_train = loader.train_fingerprints
-
-model = FingNet(ALPHA, LAMBDA, D_LATENT)
-optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
-
-for i in range(N_BATCHES):
-    sample_identities_x = sample_prints(
-        identities_x_train, N_IDENTITIES, N_ANCHOR_PER_IDENTITY
-    )
-    with tf.GradientTape() as tape:
-        sample_identities_z = model.call_on_identities(
-            sample_identities_x, training=True
-        )
-        z_a, z_p, z_n = create_triplets_batch(sample_identities_z, N_POS_PER_ANCHOR)
-        loss = model.loss_function(z_a, z_p, z_n)
-        print(loss.numpy())
-    gradients = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-# stats(model, loader.train_fingerprints)
-# stats(model, loader.test_fingerprints)
+def train(model, optimizer, identities_x_train):
+    for i in range(N_BATCHES):
+        sample_identities_x = sample_prints(
+            identities_x_train, N_IDENTITIES, N_ANCHOR_PER_IDENTITY)
+        with tf.GradientTape() as tape:
+            sample_identities_z = model.call_on_identities(
+                sample_identities_x, training=True)
+            z_a, z_p, z_n = create_triplets_batch(
+                sample_identities_z, N_POS_PER_ANCHOR)
+            loss = model.loss_function(z_a, z_p, z_n)
+            print(f'Batch: {i}, Loss: {loss.numpy()}')
+        gradients = tape.gradient(loss, model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
 
-show_tsne_visualization(
-    model.call_on_identities(loader.train_fingerprints, training=True),
-    model.call_on_identities(loader.test_fingerprints, training=True),
-)
-# tf.keras.models.save_model(model, "./models/fing")
+if __name__ == '__main__':
+    loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
+    loader.load_fingerprints("./data", 0.6)
+    identities_x_train = loader.train_fingerprints
+
+    model = FingNet(ALPHA, LAMBDA, D_LATENT)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
+    train(model, optimizer, identities_x_train)
+    model.save_weights('./models/fing')

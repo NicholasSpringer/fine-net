@@ -4,3 +4,4 @@ numpy==1.17.3
 tensor_annotations
 Pillow
 typing_extensions
+sklearn

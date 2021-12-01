@@ -36,7 +36,7 @@ class FingNet(tf.keras.Model):
         n_prints_per_identity = identities_x.shape[1]
         prints_x = tf.reshape(
             identities_x, [-1, INPUT_HEIGHT, INPUT_WIDTH, 1])
-        prints_z = self.call(prints_x, training=training)
+        prints_z = self(prints_x, training=training)
         identities_z = tf.reshape(
             prints_z, [n_identities, n_prints_per_identity, self.d_latent])
         return identities_z
