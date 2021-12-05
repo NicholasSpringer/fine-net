@@ -12,7 +12,6 @@ from AbstractLoader import (
     UniqueIdentities,
     Width,
 )
-from knn import knn_negative, knn_positive
 
 
 class MathworksLoader(AbstractLoader):

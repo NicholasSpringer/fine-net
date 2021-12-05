@@ -5,9 +5,9 @@ from MathworksLoader import MathworksLoader
 from model import FineNet
 from triplets import create_triplets_batch
 
-N_BATCHES = 1
+N_BATCHES = 100
 N_IDENTITIES = 10
-N_ANCHOR_PER_IDENTITY = 3
+N_ANCHOR_PER_IDENTITY = 12
 N_POS_PER_ANCHOR = 2
 
 IMAGE_HEIGHT = 200
@@ -44,9 +44,11 @@ def sample_prints(identities_x, n_identities, n_prints_per_identity):
 
 
 def train(model, optimizer, identities_x_train):
+    num_anchors_per_identity = identities_x_train.shape[1]
+
     for i in range(N_BATCHES):
         sample_identities_x = sample_prints(
-            identities_x_train, N_IDENTITIES, N_ANCHOR_PER_IDENTITY
+            identities_x_train, N_IDENTITIES, num_anchors_per_identity
         )
         with tf.GradientTape() as tape:
             sample_identities_z = model.call_on_identities(
@@ -61,13 +63,11 @@ def train(model, optimizer, identities_x_train):
 
 if __name__ == "__main__":
     loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
-    loader.load_fingerprints("./data", 0.6, partial_ratio=1)
+    loader.load_fingerprints("./data", 0.6, partial_ratio=0.75)
     identities_x_train = loader.train_fingerprints
 
     model = FineNet(ALPHA, LAMBDA, D_LATENT)
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     train(model, optimizer, identities_x_train)
-
-    # TODO: should add a part to the model where we determine the optimal clustering k
 
     model.save_weights("./models/fing-partial-1")
