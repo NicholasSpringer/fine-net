@@ -5,6 +5,7 @@ from MathworksLoader import MathworksLoader
 
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+from scipy.spatial import KDTree
 from matplotlib import pyplot as plt
 
 from model import FineNet
@@ -193,11 +194,105 @@ def test_random_tsne_visualization():
     show_tsne_visualization(training_random, testing_random)
 
 
+# Returns the optimal k value for fingerprint classification. Inclusive.
+def optimal_k(model, identities_x_train, k_range) -> int:
+    k_lower, k_upper = k_range
+    num_identities = identities_x_train.shape[0]
+    prints_per_identity = identities_x_train.shape[1]
+
+    # First, assemble two tensors with the embeddings and labels
+    # [identities, prints_per_identities, latent_d]
+    identity_embeddings = model.call_on_identities(identities_x_train)
+    # [identities*prints_per_identities, latent_d]
+    embeddings = tf.reshape(
+        identity_embeddings, [-1, identity_embeddings.shape[-1]]
+    ).numpy()
+
+    # Assemble the kdTree.
+    kd = KDTree(embeddings)
+    labels = tf.repeat(
+        tf.range(0, num_identities), [prints_per_identity] * num_identities
+    ).numpy()
+
+    best_k = k_lower
+    best_accuracy = 0.0
+
+    for k in range(k_lower, k_upper):
+        num_correct = 0
+
+        for print_idx, embed in enumerate(embeddings):
+            # k+1 because the kd tree will actually return embed!
+            _, indices = kd.query(embed, k=k + 1)
+            # Remove the index of the original print. Now, |indices| = k.
+            indices = np.delete(indices, np.where(indices == print_idx))
+            assert len(indices) == k
+
+            correct_label = labels[print_idx]
+            most_guessed_label = np.bincount(labels[indices]).argmax()
+            if correct_label == most_guessed_label:
+                num_correct += 1
+
+        accuracy = num_correct / len(embeddings)
+        print(f"Accuracy for k={k}: {accuracy}")
+        if accuracy > best_accuracy:
+            best_k = k
+            best_accuracy = accuracy
+
+    print(f"Returning best k of {best_k} with best accuracy of {best_accuracy}")
+    return best_k
+
+
+# train_embeddings: [num_identities x train_prints x latent_d]
+# test_embeddings:  [num_identities x test_prints  x latent_d]
+def accuracy(train_embeddings, test_embeddings) -> float:
+    num_train_prints_per_identity = train_embeddings.shape[1]
+    num_identities = train_embeddings.shape[0]
+
+    # Put together our k-D tree
+    train_prints = tf.reshape(train_embeddings, [-1, train_embeddings.shape[-1]])
+    kd = KDTree(train_prints)
+
+    # Get test data shaped up correctly
+    test_prints = tf.reshape(test_embeddings, [-1, test_embeddings.shape[-1]])
+    num_test_prints_per_iden = test_embeddings.shape[1]
+
+    # Assemble the labels
+    train_labels = tf.repeat(
+        tf.range(0, num_identities), [num_train_prints_per_identity] * num_identities
+    ).numpy()
+    test_labels = tf.repeat(
+        tf.range(0, num_identities), [num_test_prints_per_iden] * num_identities
+    ).numpy()
+
+    num_correct = 0
+    for print_idx, test_embed in enumerate(test_prints):
+        # TODO: Make this more generalizable, so that k can be other than 1
+        _, indices = kd.query(test_embed, k=1)
+
+        guessed_label = train_labels[indices]
+        correct_label = test_labels[print_idx]
+        if correct_label == guessed_label:
+            num_correct += 1
+
+    return num_correct / len(test_prints)
+
+
 if __name__ == "__main__":
     loader = MathworksLoader(200, 200)
     loader.load_fingerprints("./data", 0.6)
     model = FineNet(0.3, 0, 300)
     model.load_weights("./models/fing")
+
+    # The model provides the fingerprint embedding, but classification still needs to be done.
+    # We find the optimal k. It will be between 1 and model.train_fingerprints.shape[0], inclusive.
+    optimal_k(model, loader.train_fingerprints, (1, 8))
+
+    test_accuracy = accuracy(
+        model.call_on_identities(loader.train_fingerprints),
+        model.call_on_identities(loader.test_fingerprints),
+    )
+    print(f"Accuracy on testing set: {test_accuracy}")
+
     # stats(model, loader.train_fingerprints)
     # stats(model, loader.test_fingerprints)
     show_tsne_visualization(

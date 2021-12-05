@@ -8,9 +8,7 @@ from math import ceil
 from AbstractLoader import (
     AbstractLoader,
     Height,
-    PlaceholderModel,
     TotalPrintsPerIdentity,
-    TrainOrTestPrintsPerIdentity,
     UniqueIdentities,
     Width,
 )

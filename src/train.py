@@ -70,4 +70,4 @@ if __name__ == "__main__":
 
     # TODO: should add a part to the model where we determine the optimal clustering k
 
-    model.save_weights("./models/fing")
+    model.save_weights("./models/fing-partial-1")
