@@ -1,6 +1,9 @@
-import tensorflow as tf
-import numpy as np
+import argparse
 from time import time
+
+import numpy as np
+import tensorflow as tf
+
 from MathworksLoader import MathworksLoader
 from model import FineNet
 from triplets import create_triplets_batch
@@ -62,9 +65,43 @@ def train(model, optimizer, identities_x_train):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--train-test-split",
+        type=float,
+        dest="train_test_split",
+        help="Defines the test-train split. 0 through 1 inclusive.",
+        required=True,
+    )
+    parser.add_argument(
+        "--partial-ratio",
+        type=float,
+        dest="partial_ratio",
+        help="Define the amount of image used in partials. 0.5 through 1 inclusive.",
+        required=False,
+    )
+    parser.add_argument(
+        "--identity-split",
+        dest="identity_split",
+        action="store_true",
+        help="If true, trains using data split on identity rather than on fingerprint.",
+    )
+
+    args = parser.parse_args()
+    which_data = (
+        "Using data split on IDENTITY. "
+        if args.identity_split
+        else "Using data split on FINGERPRINT. "
+    )
+    print(
+        f"Using train/test split of {args.train_test_split}, partial ratio of {args.partial_ratio}. {which_data}\n\n"
+    )
+
     loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
-    loader.load_fingerprints("./data", 0.6, partial_ratio=0.75)
-    identities_x_train = loader.train_fingerprints
+    loader.load_fingerprints("./data", args.train_test_split, args.partial_ratio)
+    identities_x_train = (
+        loader.split_iden_train if args.identity_split else loader.train_fingerprints
+    )
 
     model = FineNet(ALPHA, LAMBDA, D_LATENT)
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)

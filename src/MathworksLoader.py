@@ -19,8 +19,15 @@ class MathworksLoader(AbstractLoader):
         self.image_height = image_height
         self.image_width = image_width
 
+        # Training and test data when we split the dataset by fingerprint
+        # i.e. both train and test get 50 identities, but train gets 3 "copies" and test gets 2
         self.train_fingerprints = None
         self.test_fingerprints = None
+
+        # Training and test data when we split up the dataset by identity:
+        # i.e. 30 identities go for training, 20 for testing.
+        self.split_iden_train = None
+        self.split_iden_test = None
 
     # fingerprints: [num_identities, prints_per_identity, height, width]
     def _generate_partials(self, fingerprints: tf.Tensor, ratio: float):
@@ -69,7 +76,7 @@ class MathworksLoader(AbstractLoader):
         data_from_fs = list(os.walk(dir))
         if len(data_from_fs[0][1]) != 0:
             # Directory contains subdirectories; must be root. Warn, but ignore.
-            print(f"Found entry with subdirectories {data_from_fs[0][1]}. Skipping.")
+            # print(f"Found entry with subdirectories {data_from_fs[0][1]}. Skipping.")
             data_from_fs = data_from_fs[1:]
 
         # Sort the subdirectories by lexicographic order so that we can test more easily
@@ -113,28 +120,45 @@ class MathworksLoader(AbstractLoader):
         ] = tf.convert_to_tensor(all_fingerprints)
 
         # Do the splitting into the training and testing.
-        # Can be done by:
-        #   1. Split on identities: so keep 80% of the identities for training, and 20% for testing
-        #   2. Split on fingerprints: so keep 80% of the fingerprints for training, and 20% for testing
-        num_train = round(num_fingerprints_per_identity * train_test_split)
-        num_test = num_fingerprints_per_identity - num_train
+        # We do this in two ways:
+        #   1. Split on fingerprints: so keep 80% of the fingerprints for training, and 20% for testing
+        #   2. Split on identities: so keep 80% of the identities for training, and 20% for testing
 
+        # First, do the splitting on the fingerprint (train/test get same identities)
+        num_prints_train = round(num_fingerprints_per_identity * train_test_split)
+        num_prints_test = num_fingerprints_per_identity - num_prints_train
         train_fingerprints, test_fingerprints = tf.split(
-            all_fingerprints_tensor, [num_train, num_test], axis=1
+            all_fingerprints_tensor, [num_prints_train, num_prints_test], axis=1
+        )
+
+        # Next, do the splitting on the identity (train/test get different identities)
+        num_iden_train = round(num_identities * train_test_split)
+        num_iden_test = num_identities - num_iden_train
+        split_iden_train, split_iden_test = tf.split(
+            all_fingerprints_tensor, [num_iden_train, num_iden_test], axis=0
         )
 
         if partial_ratio is not None:
-            # Existing dimensions: [num_identities x prints_per_identity x height x width]
-            # What we end up getting: [num_identities x 4*prints_per_identity x height x width]
+            self.train_fingerprints = self._generate_partials(
+                train_fingerprints, partial_ratio
+            )
 
-            partial_train = self._generate_partials(train_fingerprints, partial_ratio)
-            partial_test = self._generate_partials(test_fingerprints, partial_ratio)
+            self.test_fingerprints = self._generate_partials(
+                test_fingerprints, partial_ratio
+            )
 
-            self.train_fingerprints = partial_train
-            self.test_fingerprints = partial_test
+            self.split_iden_train = self._generate_partials(
+                split_iden_train, partial_ratio
+            )
+            self.split_iden_test = self._generate_partials(
+                split_iden_test, partial_ratio
+            )
         else:
             self.train_fingerprints = train_fingerprints
             self.test_fingerprints = test_fingerprints
+
+            self.split_iden_train = split_iden_train
+            self.split_iden_test = split_iden_test
 
 
 if __name__ == "__main__":

@@ -229,7 +229,7 @@ def optimal_k(model, identities_x_train, k_range) -> int:
 
 # train_embeddings: [num_identities x train_prints x latent_d]
 # test_embeddings:  [num_identities x test_prints  x latent_d]
-def accuracy(train_embeddings, test_embeddings) -> float:
+def accuracy(train_embeddings, test_embeddings, k) -> float:
     num_train_prints_per_identity = train_embeddings.shape[1]
     num_identities = train_embeddings.shape[0]
 
@@ -249,7 +249,7 @@ def accuracy(train_embeddings, test_embeddings) -> float:
         tf.range(0, num_identities), [num_test_prints_per_iden] * num_identities
     ).numpy()
 
-    return compare(train_prints, train_labels, test_prints, test_labels)
+    return compare(train_prints, train_labels, test_prints, test_labels, k)
 
 
 # Uses the train embeddings and labels to use as the neighbors. Runs KNN on the test embeddings.
@@ -308,17 +308,18 @@ def compare(train_embeds, train_labels, test_embeds, test_labels, k=1) -> float:
 
 if __name__ == "__main__":
     loader = MathworksLoader(200, 200)
-    loader.load_fingerprints("./data", 0.6)
+    loader.load_fingerprints("./data", 0.6, 0.75)
     model = FineNet(0.3, 0, 300)
     model.load_weights("./models/fing")
 
     # The model provides the fingerprint embedding, but classification still needs to be done.
     # We find the optimal k. It will be between 1 and model.train_fingerprints.shape[0], inclusive.
-    optimal_k(model, loader.train_fingerprints, (1, 8))
+    best_k = optimal_k(model, loader.train_fingerprints, (1, 8))
 
     test_accuracy = accuracy(
         model.call_on_identities(loader.train_fingerprints),
         model.call_on_identities(loader.test_fingerprints),
+        best_k,
     )
     print(f"Accuracy on testing set: {test_accuracy}")
 
