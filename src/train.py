@@ -61,10 +61,13 @@ def train(model, optimizer, identities_x_train):
 
 if __name__ == "__main__":
     loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
-    loader.load_fingerprints("./data", 0.6)
+    loader.load_fingerprints("./data", 0.6, partial_ratio=1)
     identities_x_train = loader.train_fingerprints
 
     model = FineNet(ALPHA, LAMBDA, D_LATENT)
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     train(model, optimizer, identities_x_train)
+
+    # TODO: should add a part to the model where we determine the optimal clustering k
+
     model.save_weights("./models/fing")

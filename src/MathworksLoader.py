@@ -3,7 +3,7 @@ import numpy as np
 import tensor_annotations.tensorflow as ttf
 import tensorflow as tf
 from PIL import Image
-from tensorflow.python.ops.gen_math_ops import zeta_eager_fallback
+from math import ceil
 
 from AbstractLoader import (
     AbstractLoader,
@@ -16,6 +16,7 @@ from AbstractLoader import (
 )
 from knn import knn_negative, knn_positive
 
+
 class MathworksLoader(AbstractLoader):
     def __init__(self, image_height: int, image_width: int) -> None:
         self.image_height = image_height
@@ -24,12 +25,54 @@ class MathworksLoader(AbstractLoader):
         self.train_fingerprints = None
         self.test_fingerprints = None
 
-    def load_fingerprints(self, dir: str, train_test_split: float) -> None:
+    # fingerprints: [num_identities, prints_per_identity, height, width]
+    def _generate_partials(self, fingerprints: tf.Tensor, ratio: float):
+        h, w = self.image_height, self.image_width
+        r = ratio
+
+        # We'll need this later when we reshape at the end
+        num_identities = fingerprints.shape[0]
+
+        # [num_identities*prints_per_identity, height, width, 1]
+        prints_no_identity = tf.cast(
+            tf.reshape(fingerprints, [-1, h, w, 1]), tf.float32
+        )
+
+        boxes = tf.constant(
+            [
+                [0, 0, r, r],  # Top-left box
+                [0, 1 - r, r, 0],  # Top-right box
+                [1 - r, 0, 1, r],  # Bottom-left box
+                [1 - r, 1 - r, 1, 1],  # Bottom-right box
+            ]
+        )
+
+        partial_prints = tf.map_fn(
+            fn=lambda t: tf.image.crop_and_resize(
+                tf.expand_dims(t, axis=0),
+                boxes=boxes,
+                box_indices=tf.constant([0, 0, 0, 0]),
+                crop_size=tf.constant([self.image_height, self.image_width]),
+            ),
+            elems=prints_no_identity,
+        )
+
+        # Remove the channel dimension we added earlier
+        partial_prints = tf.squeeze(partial_prints)
+
+        identities_with_partials = tf.reshape(
+            partial_prints, [num_identities, -1, h, w]
+        )
+
+        return identities_with_partials
+
+    def load_fingerprints(
+        self, dir: str, train_test_split: float, partial_ratio=None
+    ) -> None:
         data_from_fs = list(os.walk(dir))
         if len(data_from_fs[0][1]) != 0:
             # Directory contains subdirectories; must be root. Warn, but ignore.
-            print(
-                f"Found entry with subdirectories {data_from_fs[0][1]}. Skipping.")
+            print(f"Found entry with subdirectories {data_from_fs[0][1]}. Skipping.")
             data_from_fs = data_from_fs[1:]
 
         # Sort the subdirectories by lexicographic order so that we can test more easily
@@ -79,9 +122,22 @@ class MathworksLoader(AbstractLoader):
         num_train = round(num_fingerprints_per_identity * train_test_split)
         num_test = num_fingerprints_per_identity - num_train
 
-        self.train_fingerprints, self.test_fingerprints = tf.split(
+        train_fingerprints, test_fingerprints = tf.split(
             all_fingerprints_tensor, [num_train, num_test], axis=1
         )
+
+        if partial_ratio is not None:
+            # Existing dimensions: [num_identities x prints_per_identity x height x width]
+            # What we end up getting: [num_identities x 4*prints_per_identity x height x width]
+
+            partial_train = self._generate_partials(train_fingerprints, partial_ratio)
+            partial_test = self._generate_partials(test_fingerprints, partial_ratio)
+
+            self.train_fingerprints = partial_train
+            self.test_fingerprints = partial_test
+        else:
+            self.train_fingerprints = train_fingerprints
+            self.test_fingerprints = test_fingerprints
 
 
 if __name__ == "__main__":
