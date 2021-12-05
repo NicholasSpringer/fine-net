@@ -9,7 +9,7 @@ from scipy.spatial import KDTree
 from matplotlib import pyplot as plt
 
 from model import FineNet
-from knn import knn_negative, knn_positive
+from knn import knn, knn_negative, knn_positive
 
 
 def stats(model, identities_x):
@@ -209,7 +209,6 @@ def optimal_k(model, identities_x_train, k_range) -> int:
     ).numpy()
 
     # Assemble the kdTree.
-    kd = KDTree(embeddings)
     labels = tf.repeat(
         tf.range(0, num_identities), [prints_per_identity] * num_identities
     ).numpy()
@@ -218,21 +217,7 @@ def optimal_k(model, identities_x_train, k_range) -> int:
     best_accuracy = 0.0
 
     for k in range(k_lower, k_upper):
-        num_correct = 0
-
-        for print_idx, embed in enumerate(embeddings):
-            # k+1 because the kd tree will actually return embed!
-            _, indices = kd.query(embed, k=k + 1)
-            # Remove the index of the original print. Now, |indices| = k.
-            indices = np.delete(indices, np.where(indices == print_idx))
-            assert len(indices) == k
-
-            correct_label = labels[print_idx]
-            most_guessed_label = np.bincount(labels[indices]).argmax()
-            if correct_label == most_guessed_label:
-                num_correct += 1
-
-        accuracy = num_correct / len(embeddings)
+        accuracy = compare(None, None, embeddings, labels, k)
         print(f"Accuracy for k={k}: {accuracy}")
         if accuracy > best_accuracy:
             best_k = k
@@ -264,17 +249,61 @@ def accuracy(train_embeddings, test_embeddings) -> float:
         tf.range(0, num_identities), [num_test_prints_per_iden] * num_identities
     ).numpy()
 
-    num_correct = 0
-    for print_idx, test_embed in enumerate(test_prints):
-        # TODO: Make this more generalizable, so that k can be other than 1
-        _, indices = kd.query(test_embed, k=1)
+    return compare(train_prints, train_labels, test_prints, test_labels)
 
-        guessed_label = train_labels[indices]
-        correct_label = test_labels[print_idx]
-        if correct_label == guessed_label:
+
+# Uses the train embeddings and labels to use as the neighbors. Runs KNN on the test embeddings.
+# Returns accuracy on the test embeddings.
+#
+# If we're seeing a fingerprint for the first time, we might not have any training data. In this
+# case, for every fingerprint in test, we'll find its k nearest neighbors within the test space.
+# If we have test embeddings {1, 2, 5, 6} and we query for 1, we'll make sure _not_ to return 1 (just
+# 2, 5, or 6; based on k). If no training data is provided, train_{embeds|labels} should both be
+# set to None.
+#
+# Parameters:
+#   train_embeds are [num_prints_train x latent_d] or None
+#   train_labels are [num_prints x 1] or None
+#   test_embeds are [num_prints_test x latent_d]
+#   train_labels are [num_prints_test x 1]
+#   should_omit_self is explained blow.
+#   k is the k to use for KNN.
+#
+def compare(train_embeds, train_labels, test_embeds, test_labels, k=1) -> float:
+    if (train_embeds is None and train_labels is not None) or (
+        train_embeds is not None and train_labels is None
+    ):
+        raise Exception("train embeds and labels must both be None or both be lists")
+
+    only_testing = train_embeds is None and train_labels is None
+    kd = KDTree(test_embeds if only_testing else train_embeds)
+
+    num_correct = 0
+    for i, test_embed in enumerate(test_embeds):
+        # If we query a test embed on the testing embeds, we'll get ourself back! We'll remove it
+        # later, but because we'll remove it, we need to query for 1 more than k.
+        actual_k = k + 1 if only_testing else k
+        _, knn_indices = kd.query(test_embed, k=actual_k)
+        if type(knn_indices) is int:
+            knn_indices = [knn_indices]
+
+        if only_testing:
+            # Remove i, the current index, from the closest neighbors
+            assert len(knn_indices) == k + 1
+            knn_indices = np.delete(knn_indices, np.where(knn_indices == i))
+            assert len(knn_indices) == k
+            guessed_labels = test_labels[knn_indices]
+        else:
+            # Find the most common *train* label for the found train indices
+            guessed_labels = train_labels[knn_indices]
+            if type(guessed_labels) is np.int32:
+                guessed_labels = np.array([guessed_labels])
+
+        most_guessed_label = np.bincount(guessed_labels).argmax()
+        if most_guessed_label == test_labels[i]:
             num_correct += 1
 
-    return num_correct / len(test_prints)
+    return num_correct / len(test_embeds)
 
 
 if __name__ == "__main__":
