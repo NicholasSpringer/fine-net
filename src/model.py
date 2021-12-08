@@ -1,4 +1,5 @@
 import tensorflow as tf
+import keras.backend as K
 
 INPUT_HEIGHT = 200
 INPUT_WIDTH = 200
@@ -14,7 +15,7 @@ class FineNet(tf.keras.Model):
         self.embedder = tf.keras.Sequential(
             [
                 tf.keras.layers.Conv2D(16, 7, 2, "same"),  # 100
-                # tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.BatchNormalization(),
                 tf.keras.layers.MaxPool2D((2, 2), 2, padding="same"),  # 50
                 ResidualBlock([32, 32, 64], [1, 3, 1], 2),
                 tf.keras.layers.MaxPool2D((2, 2), 2, padding="same"),  # 25
@@ -41,7 +42,7 @@ class FineNet(tf.keras.Model):
         n_identities = identities_x.shape[0]
         n_prints_per_identity = identities_x.shape[1]
         prints_x = tf.reshape(identities_x, [-1, INPUT_HEIGHT, INPUT_WIDTH, 1])
-        prints_z = self(prints_x, training=training)
+        prints_z = self.call(prints_x, training=training)
         identities_z = tf.reshape(
             prints_z, [n_identities, n_prints_per_identity, self.d_latent]
         )
@@ -63,7 +64,8 @@ class FineNet(tf.keras.Model):
     def loss_function(self, z_a, z_p, z_n):
         l = self.triplet_loss(z_a, z_p, z_n)  # + self.lmbda * \
         # self.softmax_loss(z_a, z_p)
-        return tf.reduce_sum(l)
+        s = tf.reduce_sum(l)
+        return s
 
 
 class ResidualBlock(tf.keras.Model):

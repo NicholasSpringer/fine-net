@@ -157,8 +157,16 @@ class MathworksLoader(AbstractLoader):
             self.train_fingerprints = train_fingerprints
             self.test_fingerprints = test_fingerprints
 
+            print(
+                f"Train fingerprints shape: {self.train_fingerprints.shape} and test fingerprints shape: {self.test_fingerprints.shape}"
+            )
+
             self.split_iden_train = split_iden_train
             self.split_iden_test = split_iden_test
+
+            print(
+                f"shape of split iden train/test {self.split_iden_train.shape} and {self.split_iden_test.shape}"
+            )
 
 
 if __name__ == "__main__":

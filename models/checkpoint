@@ -1,2 +1,2 @@
-model_checkpoint_path: "fing-partial-1"
-all_model_checkpoint_paths: "fing-partial-1"
+model_checkpoint_path: "fing-l2"
+all_model_checkpoint_paths: "fing-l2"

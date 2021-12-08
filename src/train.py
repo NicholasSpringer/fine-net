@@ -8,9 +8,8 @@ from MathworksLoader import MathworksLoader
 from model import FineNet
 from triplets import create_triplets_batch
 
-N_BATCHES = 100
+N_BATCHES = 1000
 N_IDENTITIES = 10
-N_ANCHOR_PER_IDENTITY = 12
 N_POS_PER_ANCHOR = 2
 
 IMAGE_HEIGHT = 200
@@ -18,7 +17,7 @@ IMAGE_WIDTH = 200
 
 ALPHA = 0.3
 LAMBDA = 1
-D_LATENT = 300
+D_LATENT = 200
 
 LEARNING_RATE = 0.1
 
@@ -107,4 +106,4 @@ if __name__ == "__main__":
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     train(model, optimizer, identities_x_train)
 
-    model.save_weights("./models/fing-partial-1")
+    model.save_weights("./models/fing-l2")

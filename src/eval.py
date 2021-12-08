@@ -308,7 +308,7 @@ def compare(train_embeds, train_labels, test_embeds, test_labels, k=1) -> float:
 
 if __name__ == "__main__":
     loader = MathworksLoader(200, 200)
-    loader.load_fingerprints("./data", 0.6, 0.75)
+    loader.load_fingerprints("./data", 0.6)
     model = FineNet(0.3, 0, 300)
     model.load_weights("./models/fing")
 
@@ -325,7 +325,7 @@ if __name__ == "__main__":
 
     # stats(model, loader.train_fingerprints)
     # stats(model, loader.test_fingerprints)
-    show_tsne_visualization(
-        model.call_on_identities(loader.train_fingerprints, training=True),
-        model.call_on_identities(loader.test_fingerprints, training=True),
-    )
+    # show_tsne_visualization(
+    #     model.call_on_identities(loader.train_fingerprints, training=True),
+    #     model.call_on_identities(loader.test_fingerprints, training=True),
+    # )
