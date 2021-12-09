@@ -12,4 +12,4 @@ When training, you can specify three parameters via the command line:
 
 An example command to run is as follows:
 
-`python3 src/train.py --train-test-split 0.8 --partial-ratio 0.75 --identity-split`
+`python3 src/train.py --train-test-split 0.6 --partial-ratio 0.75 --identity-split`

@@ -10,7 +10,8 @@ from triplets import create_triplets_batch
 
 N_BATCHES = 1000
 N_IDENTITIES = 10
-N_POS_PER_ANCHOR = 2
+N_ANCHORS_PER_IDENTITY = 5
+N_POS_PER_ANCHOR = 5
 
 IMAGE_HEIGHT = 200
 IMAGE_WIDTH = 200
@@ -56,7 +57,8 @@ def train(model, optimizer, identities_x_train):
             sample_identities_z = model.call_on_identities(
                 sample_identities_x, training=True
             )
-            z_a, z_p, z_n = create_triplets_batch(sample_identities_z, N_POS_PER_ANCHOR)
+            z_a, z_p, z_n = create_triplets_batch(
+                sample_identities_z, N_ANCHORS_PER_IDENTITY, N_POS_PER_ANCHOR)
             loss = model.loss_function(z_a, z_p, z_n)
             print(f"Batch: {i}, Loss: {loss.numpy()}")
         gradients = tape.gradient(loss, model.trainable_variables)
@@ -97,7 +99,8 @@ if __name__ == "__main__":
     )
 
     loader = MathworksLoader(IMAGE_HEIGHT, IMAGE_WIDTH)
-    loader.load_fingerprints("./data", args.train_test_split, args.partial_ratio)
+    loader.load_fingerprints(
+        "./data", args.train_test_split, args.partial_ratio)
     identities_x_train = (
         loader.split_iden_train if args.identity_split else loader.train_fingerprints
     )
