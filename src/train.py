@@ -10,7 +10,6 @@ from triplets import create_triplets_batch
 
 N_BATCHES = 1000
 N_IDENTITIES = 10
-N_ANCHORS_PER_IDENTITY = 5
 N_POS_PER_ANCHOR = 5
 
 IMAGE_HEIGHT = 200
@@ -58,7 +57,7 @@ def train(model, optimizer, identities_x_train):
                 sample_identities_x, training=True
             )
             z_a, z_p, z_n = create_triplets_batch(
-                sample_identities_z, N_ANCHORS_PER_IDENTITY, N_POS_PER_ANCHOR)
+                sample_identities_z, N_POS_PER_ANCHOR)
             loss = model.loss_function(z_a, z_p, z_n)
             print(f"Batch: {i}, Loss: {loss.numpy()}")
         gradients = tape.gradient(loss, model.trainable_variables)

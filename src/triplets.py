@@ -4,7 +4,8 @@ import tensorflow as tf
 from knn import knn_negative, knn_positive
 
 
-def create_triplets(identities_z, identity_idx: int, n_anchors: int, n_pos_per_anchor: int):
+def create_triplets(identities_z, identity_idx: int, n_pos_per_anchor: int):
+    n_anchors = identities_z.shape[1]
     if identities_z.shape[1] < n_anchors:
         raise Exception(
             f"Provided anchor cardinality argument, {n_anchors}, "
@@ -30,7 +31,7 @@ def create_triplets(identities_z, identity_idx: int, n_anchors: int, n_pos_per_a
     return triplet_anchors_z, triplet_pos_z, triplet_neg_z
 
 
-def create_triplets_batch(identities_z, n_anchors: int, n_pos_per_anchor: int):
+def create_triplets_batch(identities_z, n_pos_per_anchor: int):
     """
     Creates a batch of triplets.
     """
@@ -41,7 +42,7 @@ def create_triplets_batch(identities_z, n_anchors: int, n_pos_per_anchor: int):
     neg_list = []
     for identity_idx in range(n_identities):
         anchors, positives, negatives = create_triplets(
-            identities_z, identity_idx, n_anchors, n_pos_per_anchor
+            identities_z, identity_idx, n_pos_per_anchor
         )
         anchors_list.append(anchors)
         pos_list.append(positives)
